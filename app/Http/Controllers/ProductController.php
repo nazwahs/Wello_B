@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Product;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -11,7 +12,11 @@ class ProductController extends Controller
      */
     public function index()
     {
-        //
+        $products = Product::with('category')->get();
+
+        return response()->json([
+            'data' => $products
+        ]);
     }
 
     /**
@@ -25,10 +30,23 @@ class ProductController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(string $slug) 
     {
-        //
+        $product = Product::with('category')
+            ->where('slug', $slug)
+            ->first();
+
+        if (!$product) {
+            return response()->json([
+                'message' => 'Product not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'data' => $product
+        ]);
     }
+    
 
     /**
      * Update the specified resource in storage.

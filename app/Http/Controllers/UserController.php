@@ -4,78 +4,74 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
-use Throwable;
+use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function register(Request $request)
     {
-        try {
-            $validator = Validator::make($request->all(), [
-                "name" => "required|string|min:3|max:255",
-                "email" => "required|email|string|min:3|max:255|unique:users",
-                "password" => "required|string|min:3|max:255|confirmed",
-            ]);
-            if ($validator->fails()) {
-                return response()->json([
-                    "success" => false,
-                    "message" => "validasi gagal",
-                    "errors" => $validator->errors()
-                ], 422);
-            }
-            $user = User::create([
-                "name" => $request->name,
-                "email" => $request->email,
-                "password" => Hash::make($request->password),
-            ]);
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
 
-            $token = $user->createToken('auth_token')->plainTextToken;
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Registrasi berhasil',
+            'data' => [
+                'user' => $user,
+                'token' => $token,
+            ]
+        ], 201);
+    }
+
+    // Fungsi Login (Yang bikin error jika belum ada)
+    public function login(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json([
-                "success" => true,
-                "message" => "Register Berhasil",
-                "data" => $user,
-                "access_token" => $token,
-            ], 201);
-        } catch (Throwable $e) {
-            return response()->json(["success" => false, "message" => "terjadi kesalahan sistem", "errors" => $e->getMessage()]);
+                'success' => false,
+                'message' => 'Email atau password salah',
+            ], 401);
         }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login berhasil',
+            'data' => [
+                'user' => $user,
+                'token' => $token,
+            ]
+        ]);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    // Fungsi Logout
+    public function logout(Request $request)
     {
-        //
-    }
+        $request->user()->currentAccessToken()->delete();
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return response()->json([
+            'success' => true,
+            'message' => 'Logout berhasil'
+        ]);
     }
 }

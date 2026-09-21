@@ -2,45 +2,54 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cart;
 use Illuminate\Http\Request;
 
 class CartController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $cart = Cart::where('user_id', auth()->id())
+            ->with('items.product')
+            ->first();
+
+        if (!$cart) {
+            return response()->json([
+                'data' => [
+                    'items' => [],
+                    'total' => 0
+                ]
+            ]);
+        }
+
+        $total = $cart->items->sum(function ($item) {
+            return $item->product->price * $item->quantity;
+        });
+
+        return response()->json([
+            'data' => [
+                'id' => $cart->id,
+                'items' => $cart->items,
+                'total' => $total
+            ]
+        ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         //
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
         //
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
         //
